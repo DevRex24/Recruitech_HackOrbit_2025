@@ -448,3 +448,90 @@ class ResumeAnalyzer:
                 'Include LinkedIn profile URL if available'
             ]
         }
+        
+        return {
+            'cleaned_text': cleaned_text,
+            'formatting_suggestions': formatting_suggestions,
+            'ats_optimization_tips': [
+                'Use keywords from job description naturally throughout resume',
+                'Include both acronyms and full terms (e.g., "AI" and "Artificial Intelligence")',
+                'Use standard section headers that ATS systems recognize',
+                'Avoid graphics, images, and complex formatting',
+                'Test your resume by copying and pasting into a plain text editor'
+            ]
+        }
+
+    def analyze_resume(self, resume_text, job_description):
+        """Main method to analyze resume against job description."""
+        try:
+            keyword_score, matching_keywords, missing_keywords = self.calculate_keyword_match_score(
+                resume_text, job_description
+            )
+            
+            semantic_score = self.calculate_semantic_similarity(resume_text, job_description)
+            
+            skill_analysis, matched_skills, missing_skills = self.analyze_skills_match(
+                resume_text, job_description
+            )
+            
+            ats_analysis = self.calculate_ats_score(resume_text)
+            
+            ats_formatting = self.generate_ats_friendly_format(resume_text)
+            
+            career_recommendations = self.analyze_career_recommendations(resume_text)
+            
+            total_skills = len(matched_skills) + len(missing_skills)
+            skills_score = (len(matched_skills) / max(total_skills, 1)) * 100 if total_skills > 0 else 0
+            
+            overall_score = (
+                keyword_score * 0.3 +         
+                semantic_score * 0.3 +         
+                skills_score * 0.2 +           
+                ats_analysis['ats_score'] * 0.2  
+            )
+            
+            suggestions = self.generate_suggestions(
+                resume_text, job_description, keyword_score, semantic_score,
+                missing_keywords, missing_skills, skill_analysis
+            )
+            
+            analysis_details = {
+                'keyword_matching': {
+                    'score': round(keyword_score, 1),
+                    'matched_keywords': list(matching_keywords),
+                    'missing_keywords': list(missing_keywords)
+                },
+                'semantic_similarity': {
+                    'score': round(semantic_score, 1)
+                },
+                'skills_analysis': skill_analysis,
+                'matched_skills': matched_skills,
+                'missing_skills': missing_skills,
+                'ats_analysis': {
+                    'score': ats_analysis['ats_score'],
+                    'status': ats_analysis['ats_status'],
+                    'issues': ats_analysis['ats_issues'],
+                    'recommendations': ats_analysis['ats_recommendations']
+                },
+                'ats_formatting': ats_formatting
+            }
+            
+            return {
+                'overall_score': round(overall_score, 1),
+                'ats_score': ats_analysis['ats_score'],
+                'ats_status': ats_analysis['ats_status'],
+                'ats_issues': ats_analysis['ats_issues'],
+                'ats_recommendations': ats_analysis['ats_recommendations'],
+                'ats_formatting': ats_formatting,
+                'analysis_details': analysis_details,
+                'suggestions': suggestions,
+                'career_recommendations': career_recommendations,
+                'success': True
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error in resume analysis: {str(e)}")
+            return {
+                'error': 'Failed to analyze resume. Please check your input and try again.',
+                'success': False
+            }
