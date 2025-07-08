@@ -252,8 +252,7 @@ class ResumeAnalyzer:
         
         return top_recommendations
     
-    def generate_suggestions(self, resume_text, job_text, keyword_match_score, 
-                           semantic_score, missing_keywords, missing_skills, skill_analysis):
+    def generate_suggestions(self, resume_text, job_text, keyword_match_score, semantic_score, missing_keywords, missing_skills, skill_analysis):
         """Generate actionable improvement suggestions."""
         suggestions = []
         
@@ -312,3 +311,140 @@ class ResumeAnalyzer:
             })
         
         return suggestions
+    
+    def calculate_ats_score(self, resume_text):
+        """Calculate ATS (Applicant Tracking System) compatibility score."""
+        score = 100
+        issues = []
+        recommendations = []
+        
+      
+        if len(resume_text.strip()) < 100:
+            score -= 20
+            issues.append("Resume content is too short or may not have been extracted properly")
+            recommendations.append("Ensure your resume is in a standard format (PDF or DOCX)")
+        
+       
+        import re
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        phone_pattern = r'(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}'
+        
+        if not re.search(email_pattern, resume_text):
+            score -= 10
+            issues.append("No email address detected")
+            recommendations.append("Include a professional email address")
+            
+        if not re.search(phone_pattern, resume_text):
+            score -= 5
+            issues.append("No phone number detected")
+            recommendations.append("Include a phone number with area code")
+        
+        ats_headers = [
+            'experience', 'work experience', 'employment', 'professional experience',
+            'education', 'skills', 'technical skills', 'summary', 'objective',
+            'achievements', 'accomplishments', 'certifications', 'projects'
+        ]
+        
+        found_headers = 0
+        text_lower = resume_text.lower()
+        for header in ats_headers:
+            if header in text_lower:
+                found_headers += 1
+        
+        if found_headers < 3:
+            score -= 15
+            issues.append("Missing standard section headers")
+            recommendations.append("Use clear section headers like 'Experience', 'Education', 'Skills'")
+        
+        
+        words = resume_text.split()
+        if len(words) < 200:
+            score -= 10
+            issues.append("Resume is too brief")
+            recommendations.append("Expand your resume with more detailed descriptions")
+        elif len(words) > 1000:
+            score -= 5
+            issues.append("Resume may be too lengthy for ATS parsing")
+            recommendations.append("Consider condensing to 1-2 pages")
+        
+        
+        special_chars = ['•', '→', '★', '◆', '▪', '※']
+        if any(char in resume_text for char in special_chars):
+            score -= 8
+            issues.append("Contains special characters that may not parse well")
+            recommendations.append("Use simple bullet points (-) instead of special characters")
+        
+        
+        date_patterns = [
+            r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b',
+            r'\b\d{1,2}/\d{4}\b',
+            r'\b\d{4}\s*-\s*\d{4}\b',
+            r'\b\d{4}\s*–\s*\d{4}\b'
+        ]
+        
+        date_found = any(re.search(pattern, resume_text, re.IGNORECASE) for pattern in date_patterns)
+        if not date_found:
+            score -= 5
+            issues.append("No clear date formatting detected")
+            recommendations.append("Use consistent date format (e.g., 'Jan 2020 - Dec 2022')")
+        
+       
+        if 'skill' not in text_lower:
+            score -= 10
+            issues.append("No dedicated skills section detected")
+            recommendations.append("Include a clear 'Skills' section with relevant keywords")
+        
+        
+        score = max(0, score)
+        
+        return {
+            'ats_score': score,
+            'ats_issues': issues,
+            'ats_recommendations': recommendations,
+            'ats_status': 'Excellent' if score >= 90 else 'Good' if score >= 75 else 'Fair' if score >= 60 else 'Needs Improvement'
+        }
+    
+    def generate_ats_friendly_format(self, resume_text):
+        """Generate ATS-friendly formatting suggestions and cleaned text."""
+        
+        import re
+        
+        cleaned_text = resume_text
+        
+        special_bullets = ['•', '◆', '▪', '★', '→', '※']
+        for bullet in special_bullets:
+            cleaned_text = cleaned_text.replace(bullet, '-')
+        
+        
+        date_replacements = [
+            (r'(\w+)\s+(\d{4})', r'\1 \2'), 
+            (r'(\d{1,2})/(\d{1,2})/(\d{4})', r'\1/\3'),  
+        ]
+        
+        for pattern, replacement in date_replacements:
+            cleaned_text = re.sub(pattern, replacement, cleaned_text)
+        
+        formatting_suggestions = {
+            'file_format': 'Save as PDF or DOCX format for best ATS compatibility',
+            'font_recommendations': 'Use standard fonts: Arial, Calibri, or Times New Roman (10-12pt)',
+            'layout_tips': [
+                'Use single-column layout',
+                'Avoid headers, footers, and text boxes',
+                'Use standard section headers (Experience, Education, Skills)',
+                'Left-align all text',
+                'Use consistent formatting throughout'
+            ],
+            'content_optimization': [
+                'Include relevant keywords from job description',
+                'Use standard job titles and company names',
+                'Spell out abbreviations the first time',
+                'Include quantifiable achievements',
+                'Use action verbs to start bullet points'
+            ],
+            'contact_info': [
+                'Place contact information at the top',
+                'Include: Full name, phone, email, city/state',
+                'Use professional email address',
+                'Include LinkedIn profile URL if available'
+            ]
+        }
